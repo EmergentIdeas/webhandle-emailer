@@ -1,0 +1,32 @@
+{
+  "name": "webhandle-emailer",
+  "version": "1.0.0",
+  "description": "Creates functions to email the results of form submission",
+  "main": "webhandle-emailer.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/EmergentIdeas/webhandle-emailer.git"
+  },
+  "keywords": [
+    "webhandle",
+    "email",
+    "nodemail",
+    "contact",
+    "form"
+  ],
+  "author": "Dan Kolz (Emergent Ideas)",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/EmergentIdeas/webhandle-emailer/issues"
+  },
+  "homepage": "https://github.com/EmergentIdeas/webhandle-emailer#readme",
+  "dependencies": {
+    "filter-log": "0.0.4",
+    "moment": "^2.20.1",
+    "nodemailer": "^4.4.2",
+    "striptags": "^3.1.1"
+  }
+}
