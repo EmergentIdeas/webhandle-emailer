@@ -130,7 +130,10 @@ class Emailer {
 						mailOptions.replyTo = options.replyTo || dat.email
 					}
 
-					if (options.attachments && options.attachments.length) {
+					if(options.attachments && typeof options.attachments == 'function') {
+						mailOptions.attachments = options.attachments(req, res)
+					}
+					else if (options.attachments && options.attachments.length) {
 						mailOptions.attachments = options.attachments
 					}
 
