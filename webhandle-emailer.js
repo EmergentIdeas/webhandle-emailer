@@ -89,7 +89,7 @@ class Emailer {
 		let transportDef = this.transportDef
 		return function(req, res, next) {
 			let dat = cleanse(req.body, req.fields)
-			if (dat.vrf != (options.vrf || '12')) {
+			if (!options.noVrf && (dat.vrf != (options.vrf || '12'))) {
 				log.error('Verification could did not match. ' + dat.vrf + ' did not equal ' + (options.vrf || '12'))
 				if (options.skipResponse) {
 					next()
