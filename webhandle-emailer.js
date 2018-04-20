@@ -164,6 +164,9 @@ class Emailer {
 					else if(options.redirectUrl) {
 						res.redirect(options.redirectUrl)
 					}
+					else if(options.respondent) {
+						options.respondent(req, res, next)
+					}
 					else {
 						next()
 					}
