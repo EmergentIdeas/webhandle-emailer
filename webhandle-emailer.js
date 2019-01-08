@@ -118,6 +118,15 @@ class Emailer {
 						mailOptions.subject = options.subject
 					}
 					
+					if(!options.from) {
+						
+					}
+					if(typeof options.from == 'function') {
+						mailOptions.from = options.from(req, res)
+					}
+					else {
+						mailOptions.from = options.from
+					}
 
 
 					if (typeof options.to == 'function') {
@@ -142,6 +151,12 @@ class Emailer {
 							try {
 								if (error) {
 									log.error('Could not send email: %s\n%s', error.message, error.stack)
+									log.info({
+										message: 'Email lost',
+										response: info.response,
+										contents: mailOptions,
+										formParms: dat
+									})
 								} else {
 									log.info({
 										message: 'Email sent',
