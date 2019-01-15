@@ -98,98 +98,117 @@ class Emailer {
 				}
 				return
 			}
-			if(options.addTemplates) {
-				options.addTemplates(res.tri)
-			}
-			res.tri.loadTemplate(options.emailTemplate || 'contact-email', (template) => {
-				try {
-					let mailOptions = {
-						from: transportDef.auth.user,
-						html: template(dat)
-					}
-					
-					if(!options.subject) {
-						mailOptions.subject = 'Contact from the website'
-					}
-					else if(typeof options.subject == 'function') {
-						mailOptions.subject = options.subject(req, res)
-					}
-					else {
-						mailOptions.subject = options.subject
-					}
-					
-					if(!options.from) {
-						
-					}
-					if(typeof options.from == 'function') {
-						mailOptions.from = options.from(req, res)
-					}
-					else {
-						mailOptions.from = options.from
-					}
-
-
-					if (typeof options.to == 'function') {
-						mailOptions.to = options.to(req, res)
-					} else {
-						mailOptions.to = options.to
-					}
-
-					if (dat.email || options.replyTo) {
-						mailOptions.replyTo = options.replyTo || dat.email
-					}
-
-					if(options.attachments && typeof options.attachments == 'function') {
-						mailOptions.attachments = options.attachments(req, res)
-					}
-					else if (options.attachments && options.attachments.length) {
-						mailOptions.attachments = options.attachments
-					}
-
-					if (transport) {
-						transport.sendMail(mailOptions, function(error, info) {
-							try {
-								if (error) {
-									log.error('Could not send email: %s\n%s', error.message, error.stack)
-									log.info({
-										message: 'Email lost',
-										response: info.response,
-										contents: mailOptions,
-										formParms: dat
-									})
-								} else {
-									log.info({
-										message: 'Email sent',
-										response: info.response,
-										contents: mailOptions,
-										formParms: dat
-									})
-								}
-							} catch (e) {
-								console.log(e)
-							}
-						})
-					} else {
-						log.error('No transport is defined.')
-					}
-
-					if (options.skipResponse) {
-						next()
-					} 
-					else if(options.redirectUrl) {
-						res.redirect(options.redirectUrl)
-					}
-					else if(options.respondent) {
-						options.respondent(req, res, next)
-					}
-					else {
-						next()
-					}
-				} catch (ex) {
-					console.log(ex)
+			
+			function runEmailSend() {
+			
+				if(options.addTemplates) {
+					options.addTemplates(res.tri)
 				}
+				res.tri.loadTemplate(options.emailTemplate || 'contact-email', (template) => {
+					try {
+						let mailOptions = {
+							from: transportDef.auth.user,
+							html: template(dat)
+						}
+						
+						if(!options.subject) {
+							mailOptions.subject = 'Contact from the website'
+						}
+						else if(typeof options.subject == 'function') {
+							mailOptions.subject = options.subject(req, res)
+						}
+						else {
+							mailOptions.subject = options.subject
+						}
+						
+						if(!options.from) {
+							
+						}
+						if(typeof options.from == 'function') {
+							mailOptions.from = options.from(req, res)
+						}
+						else {
+							mailOptions.from = options.from
+						}
 
-			})
+
+						if (typeof options.to == 'function') {
+							mailOptions.to = options.to(req, res)
+						} else {
+							mailOptions.to = options.to
+						}
+
+						if (dat.email || options.replyTo) {
+							mailOptions.replyTo = options.replyTo || dat.email
+						}
+
+						if(options.attachments && typeof options.attachments == 'function') {
+							mailOptions.attachments = options.attachments(req, res)
+						}
+						else if (options.attachments && options.attachments.length) {
+							mailOptions.attachments = options.attachments
+						}
+
+						if (transport) {
+							transport.sendMail(mailOptions, function(error, info) {
+								try {
+									if (error) {
+										log.error('Could not send email: %s\n%s', error.message, error.stack)
+										log.info({
+											message: 'Email lost',
+											response: info.response,
+											contents: mailOptions,
+											formParms: dat
+										})
+									} else {
+										log.info({
+											message: 'Email sent',
+											response: info.response,
+											contents: mailOptions,
+											formParms: dat
+										})
+									}
+								} catch (e) {
+									console.log(e)
+								}
+							})
+						} else {
+							log.error('No transport is defined.')
+						}
+
+						if (options.skipResponse) {
+							next()
+						} 
+						else if(options.redirectUrl) {
+							res.redirect(options.redirectUrl)
+						}
+						else if(options.respondent) {
+							options.respondent(req, res, next)
+						}
+						else {
+							next()
+						}
+					} catch (ex) {
+						console.log(ex)
+					}
+
+				})
+			}
+			
+			
+			if(options.spamCheck) {
+				options.spamCheck(req, res, (err) => {
+					if(!err) {
+						runEmailSend()
+					}
+					else {
+						res.end()
+					}
+				})
+			}
+			else {
+				runEmailSend()
+			}
 		}
 	}
 	
