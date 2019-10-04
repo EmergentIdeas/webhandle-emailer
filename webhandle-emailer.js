@@ -76,19 +76,26 @@ class Emailer {
 						log.error('Could not parse webhandleEmail options: ' + e.message)
 					}
 				}
-				this.transportDef = this.transportOptions.transport
-				this.transport = nodemailer.createTransport(this.transportDef)
 			} else {
 				log.error('No transport information at process.env.webhandleEmail. Info should look like %s' + JSON.stringify(example, null, "\t"))
 			}
 		}
+		this.transportDef = this.transportOptions.transport
+		this.transport = nodemailer.createTransport(this.transportDef)
 	}
 	
 	createFormHandler(options) {
 		let transport = this.transport
 		let transportDef = this.transportDef
+		let self = this
 		return function(req, res, next) {
-			let dat = cleanse(req.body, req.fields)
+			let dat 
+			if(options.cleanse) {
+				dat = options.cleanse(req.body, req.fields)
+			}
+			else {
+				dat = self.cleanse(req.body, req.fields)
+			}
 			if (!options.noVrf && (dat.vrf != (options.vrf || '12'))) {
 				log.error('Verification could did not match. ' + dat.vrf + ' did not equal ' + (options.vrf || '12'))
 				if (options.skipResponse) {
@@ -97,6 +104,13 @@ class Emailer {
 					res.redirect('/thank-you.html')
 				}
 				return
+			}
+
+			if(options.processFields) {
+				let ret = options.processFields(dat, req, res)
+				if(ret) {
+					dat = ret
+				}
 			}
 			
 			function runEmailSend() {
