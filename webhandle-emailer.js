@@ -6,6 +6,8 @@ const striptags = require('striptags')
 const path = require('path')
 const nodemailer = require('nodemailer')
 
+const grecaptchaRequest = require('./grecaptcha-request')
+
 let example = {
 	transport: {
 		service: "gmail",
@@ -96,20 +98,42 @@ class Emailer {
 			else {
 				dat = self.cleanse(req.body, req.fields)
 			}
-			if (!options.noVrf && (dat.vrf != (options.vrf || '12'))) {
-				log.error('Verification could did not match. ' + dat.vrf + ' did not equal ' + (options.vrf || '12'))
-				if (options.skipResponse) {
-					next()
-				} else {
-					res.redirect('/thank-you.html')
-				}
-				return
-			}
 
 			if(options.processFields) {
 				let ret = options.processFields(dat, req, res)
 				if(ret) {
 					dat = ret
+				}
+			}
+			
+			function handleUserResponse(req, res, next) {
+				if (options.skipResponse) {
+					next()
+				} 
+				else if(options.redirectUrl) {
+					res.redirect(options.redirectUrl)
+				}
+				else if(options.respondent) {
+					options.respondent(req, res, next)
+				}
+				else {
+					res.end()
+				}
+			}
+			
+			function handleGRecaptchaCheck(req, res, next) {
+				if(options.grecaptchaPrivate) {
+					grecaptchaRequest(options.grecaptchaPrivate, dat.grt, (err, answer) => {
+						if(answer.success) {
+							runEmailSend()
+						}
+						else {
+							handleUserResponse(req, res, next)
+						}
+					})
+				}
+				else {
+					runEmailSend()
 				}
 			}
 			
@@ -162,6 +186,10 @@ class Emailer {
 						else if (options.attachments && options.attachments.length) {
 							mailOptions.attachments = options.attachments
 						}
+						
+						if(options.preSendProcessor) {
+							options.preSendProcessor(mailOptions, req, options)
+						}
 
 						if (transport) {
 							transport.sendMail(mailOptions, function(error, info) {
@@ -189,19 +217,9 @@ class Emailer {
 						} else {
 							log.error('No transport is defined.')
 						}
+						
+						handleUserResponse(req, res, next)
 
-						if (options.skipResponse) {
-							next()
-						} 
-						else if(options.redirectUrl) {
-							res.redirect(options.redirectUrl)
-						}
-						else if(options.respondent) {
-							options.respondent(req, res, next)
-						}
-						else {
-							next()
-						}
 					} catch (ex) {
 						console.log(ex)
 					}
@@ -209,19 +227,26 @@ class Emailer {
 				})
 			}
 			
+			// if we're supposed to use a vrf, check the vrf. If it's not right, log it and redirect them to the
+			// success page.
+			if (!options.noVrf && (dat.vrf != (options.vrf || '12'))) {
+				log.error('Verification could did not match. ' + dat.vrf + ' did not equal ' + (options.vrf || '12'))
+				handleUserResponse(req, res, next)
+				return
+			}
 			
 			if(options.spamCheck) {
 				options.spamCheck(req, res, (err) => {
 					if(!err) {
-						runEmailSend()
+						handleGRecaptchaCheck(req, res, next)
 					}
 					else {
-						res.end()
+						handleUserResponse(req, res, next)
 					}
 				})
 			}
 			else {
-				runEmailSend()
+				handleGRecaptchaCheck(req, res, next)
 			}
 		}
 	}
