@@ -90,6 +90,9 @@ class Emailer {
 		let transport = this.transport
 		let transportDef = this.transportDef
 		let self = this
+		options.requiredGrecaptchaScore = options.requiredGrecaptchaScore || .5
+
+
 		return function(req, res, next) {
 			let dat 
 			if(options.cleanse) {
@@ -124,7 +127,7 @@ class Emailer {
 			function handleGRecaptchaCheck(req, res, next) {
 				if(options.grecaptchaPrivate) {
 					grecaptchaRequest(options.grecaptchaPrivate, dat.grt, (err, answer) => {
-						if(answer.success) {
+						if(answer.success && answer.score >= options.requiredGrecaptchaScore) {
 							runEmailSend()
 						}
 						else {
