@@ -24,7 +24,14 @@ function cleanse(body, fields) {
 	let o = Object.assign({}, body)
 	Object.assign(o, fields)
 	for (let key of Object.keys(o)) {
-		o[key] = striptags(o[key])
+		if(typeof o[key] == 'string') {
+			o[key] = striptags(o[key])
+		}
+		else if(Array.isArray(o[key])) {
+			for(let i = 0; i < o[key].length; i++) {
+				o[key][i] = striptags(o[key][i])
+			}
+		}
 	}
 
 	return o
@@ -148,8 +155,7 @@ class Emailer {
 				res.tri.loadTemplate(options.emailTemplate || 'contact-email', (template) => {
 					try {
 						let mailOptions = {
-							from: transportDef.auth.user,
-							html: template(dat)
+							from: transportDef.auth.user
 						}
 						
 						if(!options.subject) {
@@ -189,6 +195,10 @@ class Emailer {
 						else if (options.attachments && options.attachments.length) {
 							mailOptions.attachments = options.attachments
 						}
+						if(options.preRenderProcessor) {
+							options.preRenderProcessor(mailOptions, req, options, dat)
+						}
+						mailOptions.html = template(dat)
 						
 						if(options.preSendProcessor) {
 							options.preSendProcessor(mailOptions, req, options)
