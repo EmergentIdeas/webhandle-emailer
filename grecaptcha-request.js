@@ -5,11 +5,6 @@ let log = filog('webhandle:webhandle-emailer')
 
 let recaptchaRequest = (privateKey, token, callback) => {
 	let data = 'secret=' + encodeURIComponent(privateKey) + '&response=' + encodeURIComponent(token)
-	// const dataObj = {
-	// 	secret: privateKey,
-	// 	response: token
-	// }
-	// let data = JSON.stringify(dataObj)
 	
 	const options = {
 		hostname: 'www.google.com',
@@ -23,8 +18,6 @@ let recaptchaRequest = (privateKey, token, callback) => {
 	}
 
 	const req = https.request(options, (res) => {
-		console.log(`statusCode: ${res.statusCode}`)
-
 		res.on('data', (d) => {
 			if(typeof d == 'string' || Buffer.isBuffer(d)) {
 				try {
