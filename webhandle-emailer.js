@@ -93,6 +93,125 @@ class Emailer {
 		this.transport = nodemailer.createTransport(this.transportDef)
 	}
 	
+	findFirstNotNullValue(candidates, fArgs) {
+		for(let candidate of candidates) {
+			if(candidate) {
+				if(typeof candidate === 'string') {
+					return candidate
+				}
+				if(typeof candidate === 'function') {
+					return candidate(...fArgs)
+				}
+			}
+		}
+		return null
+	}
+	
+	/**
+	 * 
+	 * @param {object} message The message to send
+	 * @param {string} [message.to] String of destination addresses. Use a string of comma separated values for
+	 * multiple recipients
+	 * @param {string} [message.replyTo] Add a different reply to other than the sender
+	 * @param {string|function} [message.from] The from address. Frequently left black where the sending service requires a specific address.
+	 * @param {string|function} message.subject The subject to use or a function which creates the subject
+	 * @param {string} [message.emailTemplate] The name of the template to use
+	 * @param {object} [message.data] The data to render with the template
+	 * @param {string} [message.messageHTML] The text of the message to send. Use this or emailTemplate
+	 * @param {array} [message.attachments] 
+	 * @param {object} [options]
+	 * @param {function} [options.cleanse]
+	 * @param {function} [options.processFields]
+	 * @param {function} [options.preRenderProcessor]
+	 * @param {function} [options.addTemplates]
+	 * @param {function} [options.preSendProcessor]
+	 * @returns 
+	 */
+	async sendEmail(message, options = {}) {
+
+		let transport = this.transport
+		let transportDef = this.transportDef
+		let self = this
+		let tri = webhandle.tripartite
+		return new Promise((resolve, reject) => {
+			let dat = (options.cleanse || this.cleanse)(message.data || {}, {})
+			if(options.processFields) {
+				let ret = options.processFields(dat)
+				if(ret) {
+					dat = ret
+				}
+			}
+			
+			let mailOptions = {
+				subject: this.findFirstNotNullValue([message.subject, 'Contact from the website'], [message, options])
+				, from: this.findFirstNotNullValue([message.from, transportDef.auth.user], [message, options])
+				, to: this.findFirstNotNullValue([message.to, this.transportOptions.destDefault], [message, options])
+				, replyTo: this.findFirstNotNullValue([message.replyTo], [message, options])
+			}
+			if(message.attachments) {
+				mailOptions.attachments = this.findFirstNotNullValue([message.attachments], [message, options])
+			}
+
+			if(options.preRenderProcessor) {
+				options.preRenderProcessor(mailOptions, message, options, dat)
+			}
+
+			if(options.addTemplates) {
+				options.addTemplates(tri)
+			}
+
+			if(message.emailTemplate) {
+				tri.loadTemplate(message.emailTemplate, (template) => {
+					mailOptions.html = template(dat)
+					sendWithContent()	
+				})
+			}
+			else {
+				mailOptions.html = message.messageHTML
+				sendWithContent()
+			}
+			
+			function sendWithContent() {
+				if(options.preSendProcessor) {
+					options.preSendProcessor(mailOptions, req, options)
+				}
+
+				if (transport) {
+					transport.sendMail(mailOptions, function(error, info) {
+						try {
+							if (error) {
+								log.error('Could not send email: %s\n%s', error.message, error.stack)
+								log.error({
+									message: 'Email lost',
+									response: info.response,
+									contents: mailOptions,
+									formParms: dat
+								})
+								reject(error)
+							} else {
+								log.info({
+									message: 'Email sent',
+									response: info.response,
+									contents: mailOptions,
+									formParms: dat
+								})
+								resolve()
+							}
+						} catch (e) {
+							console.log(e)
+						}
+
+					})
+				}
+				else {
+					let msg = 'No transport is defined.'
+					log.error(msg)
+					reject(new Error(msg))
+				}
+			}
+		})
+	}
+	
 	createFormHandler(options) {
 		let transport = this.transport
 		let transportDef = this.transportDef
