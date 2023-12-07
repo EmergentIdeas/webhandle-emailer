@@ -7,6 +7,7 @@ const path = require('path')
 const nodemailer = require('nodemailer')
 
 const grecaptchaRequest = require('./grecaptcha-request')
+const stream = require('stream');
 
 let example = {
 	transport: {
@@ -24,11 +25,11 @@ function cleanse(body, fields) {
 	let o = Object.assign({}, body)
 	Object.assign(o, fields)
 	for (let key of Object.keys(o)) {
-		if(typeof o[key] == 'string') {
+		if (typeof o[key] == 'string') {
 			o[key] = striptags(o[key])
 		}
-		else if(Array.isArray(o[key])) {
-			for(let i = 0; i < o[key].length; i++) {
+		else if (Array.isArray(o[key])) {
+			for (let i = 0; i < o[key].length; i++) {
 				o[key][i] = striptags(o[key][i])
 			}
 		}
@@ -63,7 +64,7 @@ function isValueTrue(context) {
 }
 
 function addTemplates(tri) {
-	tri.addTemplate('contact-forms/yesNo', function(context) {
+	tri.addTemplate('contact-forms/yesNo', function (context) {
 		return isValueTrue(context) ? 'yes' : 'no'
 	})
 }
@@ -73,7 +74,7 @@ function addTemplates(tri) {
 
 class Emailer {
 	constructor(transportOptions) {
-		if(transportOptions) {
+		if (transportOptions) {
 			this.transportOptions = transportOptions
 		}
 		else {
@@ -92,21 +93,21 @@ class Emailer {
 		this.transportDef = this.transportOptions.transport
 		this.transport = nodemailer.createTransport(this.transportDef)
 	}
-	
+
 	findFirstNotNullValue(candidates, fArgs) {
-		for(let candidate of candidates) {
-			if(candidate) {
-				if(typeof candidate === 'string') {
+		for (let candidate of candidates) {
+			if (candidate) {
+				if (typeof candidate === 'string') {
 					return candidate
 				}
-				if(typeof candidate === 'function') {
+				if (typeof candidate === 'function') {
 					return candidate(...fArgs)
 				}
 			}
 		}
 		return null
 	}
-	
+
 	/**
 	 * 
 	 * @param {object} message The message to send
@@ -135,49 +136,49 @@ class Emailer {
 		let tri = webhandle.tripartite
 		return new Promise((resolve, reject) => {
 			let dat = (options.cleanse || this.cleanse)(message.data || {}, {})
-			if(options.processFields) {
+			if (options.processFields) {
 				let ret = options.processFields(dat)
-				if(ret) {
+				if (ret) {
 					dat = ret
 				}
 			}
-			
+
 			let mailOptions = {
 				subject: this.findFirstNotNullValue([message.subject, 'Contact from the website'], [message, options])
 				, from: this.findFirstNotNullValue([message.from, transportDef.auth.user], [message, options])
 				, to: this.findFirstNotNullValue([message.to, this.transportOptions.destDefault], [message, options])
 				, replyTo: this.findFirstNotNullValue([message.replyTo], [message, options])
 			}
-			if(message.attachments) {
+			if (message.attachments) {
 				mailOptions.attachments = this.findFirstNotNullValue([message.attachments], [message, options])
 			}
 
-			if(options.preRenderProcessor) {
+			if (options.preRenderProcessor) {
 				options.preRenderProcessor(mailOptions, message, options, dat)
 			}
 
-			if(options.addTemplates) {
+			if (options.addTemplates) {
 				options.addTemplates(tri)
 			}
 
-			if(message.emailTemplate) {
+			if (message.emailTemplate) {
 				tri.loadTemplate(message.emailTemplate, (template) => {
 					mailOptions.html = template(dat)
-					sendWithContent()	
+					sendWithContent()
 				})
 			}
 			else {
 				mailOptions.html = message.messageHTML
 				sendWithContent()
 			}
-			
+
 			function sendWithContent() {
-				if(options.preSendProcessor) {
+				if (options.preSendProcessor) {
 					options.preSendProcessor(mailOptions, req, options)
 				}
 
 				if (transport) {
-					transport.sendMail(mailOptions, function(error, info) {
+					transport.sendMail(mailOptions, function (error, info) {
 						try {
 							if (error) {
 								log.error('Could not send email: %s\n%s', error.message, error.stack)
@@ -211,7 +212,7 @@ class Emailer {
 			}
 		})
 	}
-	
+
 	createFormHandler(options) {
 		let transport = this.transport
 		let transportDef = this.transportDef
@@ -219,41 +220,41 @@ class Emailer {
 		options.requiredGrecaptchaScore = options.requiredGrecaptchaScore || .5
 
 
-		return function(req, res, next) {
-			let dat 
-			if(options.cleanse) {
+		return function (req, res, next) {
+			let dat
+			if (options.cleanse) {
 				dat = options.cleanse(req.body, req.fields)
 			}
 			else {
 				dat = self.cleanse(req.body, req.fields)
 			}
 
-			if(options.processFields) {
+			if (options.processFields) {
 				let ret = options.processFields(dat, req, res)
-				if(ret) {
+				if (ret) {
 					dat = ret
 				}
 			}
-			
+
 			function handleUserResponse(req, res, next) {
 				if (options.skipResponse) {
 					next()
-				} 
-				else if(options.redirectUrl) {
+				}
+				else if (options.redirectUrl) {
 					res.redirect(options.redirectUrl)
 				}
-				else if(options.respondent) {
+				else if (options.respondent) {
 					options.respondent(req, res, next)
 				}
 				else {
 					res.end()
 				}
 			}
-			
+
 			function handleGRecaptchaCheck(req, res, next) {
-				if(options.grecaptchaPrivate) {
+				if (options.grecaptchaPrivate) {
 					grecaptchaRequest(options.grecaptchaPrivate, dat.grt, (err, answer) => {
-						if(answer.success && answer.score >= options.requiredGrecaptchaScore) {
+						if (answer.success && answer.score >= options.requiredGrecaptchaScore) {
 							runEmailSend()
 						}
 						else {
@@ -265,10 +266,10 @@ class Emailer {
 					runEmailSend()
 				}
 			}
-			
+
 			function runEmailSend() {
-			
-				if(options.addTemplates) {
+
+				if (options.addTemplates) {
 					options.addTemplates(res.tri)
 				}
 				res.tri.loadTemplate(options.emailTemplate || 'contact-email', (template) => {
@@ -276,21 +277,21 @@ class Emailer {
 						let mailOptions = {
 							from: transportDef.auth.user
 						}
-						
-						if(!options.subject) {
+
+						if (!options.subject) {
 							mailOptions.subject = 'Contact from the website'
 						}
-						else if(typeof options.subject == 'function') {
+						else if (typeof options.subject == 'function') {
 							mailOptions.subject = options.subject(req, res)
 						}
 						else {
 							mailOptions.subject = options.subject
 						}
-						
-						if(!options.from) {
-							
+
+						if (!options.from) {
+
 						}
-						if(typeof options.from == 'function') {
+						if (typeof options.from == 'function') {
 							mailOptions.from = options.from(req, res)
 						}
 						else {
@@ -308,49 +309,60 @@ class Emailer {
 							mailOptions.replyTo = options.replyTo || dat.email
 						}
 
-						if(options.attachments && typeof options.attachments == 'function') {
+						if (options.attachments && typeof options.attachments == 'function') {
 							mailOptions.attachments = options.attachments(req, res)
 						}
 						else if (options.attachments && options.attachments.length) {
 							mailOptions.attachments = options.attachments
 						}
-						if(options.preRenderProcessor) {
+						if (options.preRenderProcessor) {
 							options.preRenderProcessor(mailOptions, req, options, dat)
 						}
-						mailOptions.html = template(dat)
-						
-						if(options.preSendProcessor) {
-							options.preSendProcessor(mailOptions, req, options)
-						}
+						function sendContents() {
+							if (options.preSendProcessor) {
+								options.preSendProcessor(mailOptions, req, options)
+							}
 
-						if (transport) {
-							transport.sendMail(mailOptions, function(error, info) {
-								try {
-									if (error) {
-										log.error('Could not send email: %s\n%s', error.message, error.stack)
-										log.info({
-											message: 'Email lost',
-											response: info.response,
-											contents: mailOptions,
-											formParms: dat
-										})
-									} else {
-										log.info({
-											message: 'Email sent',
-											response: info.response,
-											contents: mailOptions,
-											formParms: dat
-										})
+							if (transport) {
+								transport.sendMail(mailOptions, function (error, info) {
+									try {
+										if (error) {
+											log.error('Could not send email: %s\n%s', error.message, error.stack)
+											log.info({
+												message: 'Email lost',
+												response: info.response,
+												contents: mailOptions,
+												formParms: dat
+											})
+										} else {
+											log.info({
+												message: 'Email sent',
+												response: info.response,
+												contents: mailOptions,
+												formParms: dat
+											})
+										}
+									} catch (e) {
+										console.log(e)
 									}
-								} catch (e) {
-									console.log(e)
-								}
-							})
-						} else {
-							log.error('No transport is defined.')
+								})
+							} else {
+								log.error('No transport is defined.')
+							}
+
+							handleUserResponse(req, res, next)
 						}
-						
-						handleUserResponse(req, res, next)
+						mailOptions.html = ''
+
+						let emailRenderStream = new stream.Writable();
+						emailRenderStream._write = function (chunk, encoding, done) {
+							mailOptions.html += chunk.toString()
+							done()
+						};
+						template(dat, emailRenderStream, function () {
+							sendContents()
+						})
+
 
 					} catch (ex) {
 						console.log(ex)
@@ -358,7 +370,7 @@ class Emailer {
 
 				})
 			}
-			
+
 			// if we're supposed to use a vrf, check the vrf. If it's not right, log it and redirect them to the
 			// success page.
 			if (!options.noVrf && (dat.vrf != (options.vrf || '12'))) {
@@ -366,10 +378,10 @@ class Emailer {
 				handleUserResponse(req, res, next)
 				return
 			}
-			
-			if(options.spamCheck) {
+
+			if (options.spamCheck) {
 				options.spamCheck(req, res, (err) => {
-					if(!err) {
+					if (!err) {
 						handleGRecaptchaCheck(req, res, next)
 					}
 					else {
@@ -382,7 +394,7 @@ class Emailer {
 			}
 		}
 	}
-	
+
 	cleanse(body, fields) {
 		return cleanse(body, fields)
 	}

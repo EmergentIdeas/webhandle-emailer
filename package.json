@@ -1,6 +1,6 @@
 {
   "name": "webhandle-emailer",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "description": "Creates functions to email the results of form submission",
   "main": "webhandle-emailer.js",
   "scripts": {

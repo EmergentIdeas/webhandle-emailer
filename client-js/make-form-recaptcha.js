@@ -13,11 +13,16 @@
 module.exports = function(googlePublicId, formSelector = '.google-recaptcha-form') {
 	
 	let recaptchaNeeded = true
-	let $ = window.jQuery
-	let $form = $(formSelector)
-	$.getScript('https://www.google.com/recaptcha/api.js?render=' + googlePublicId)
+	
+	let forms = document.querySelectorAll(formSelector)
+	if(forms && forms.length > 0) {
+		let scr = document.createElement('script')
+		scr.src = 'https://www.google.com/recaptcha/api.js?render=' + googlePublicId
+		document.head.appendChild(scr)
+	}
+	
 	function onSubmit(e) {
-		let self = this
+		let form = e.target
 		if(grecaptcha && googlePublicId) {
 			if(recaptchaNeeded) {
 				e.preventDefault()
@@ -25,11 +30,10 @@ module.exports = function(googlePublicId, formSelector = '.google-recaptcha-form
 					grecaptcha.execute(googlePublicId, { action: 'submit' }).then(function (token) {
 						if(token) {
 							recaptchaNeeded = false
-							$form.append('<input type="hidden" name="grt" />')
-							$('input[name=grt]').val(token)
-							$form.off('submit', onSubmit)
+							form.insertAdjacentHTML('beforeend', `<input type="hidden" name="grt" value="${token}"/>`)
+							form.removeEventListener('submit', onSubmit)
 							setTimeout(function() {
-								$form.trigger('submit')
+								form.submit()
 							}, 100)
 						}
 					}).catch(function(err) {
@@ -39,6 +43,9 @@ module.exports = function(googlePublicId, formSelector = '.google-recaptcha-form
 			}
 		}
 	}
+	for(let form of forms) {
+		form.addEventListener('submit', onSubmit)
 
-	$form.on('submit', onSubmit)
+	}
+	
 }
