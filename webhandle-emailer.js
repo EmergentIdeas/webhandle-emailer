@@ -163,8 +163,16 @@ class Emailer {
 
 			if (message.emailTemplate) {
 				tri.loadTemplate(message.emailTemplate, (template) => {
-					mailOptions.html = template(dat)
-					sendWithContent()
+					mailOptions.html = ''
+
+					let emailRenderStream = new stream.Writable();
+					emailRenderStream._write = function (chunk, encoding, done) {
+						mailOptions.html += chunk.toString()
+						done()
+					};
+					template(dat, emailRenderStream, function () {
+						sendContents()
+					})
 				})
 			}
 			else {
