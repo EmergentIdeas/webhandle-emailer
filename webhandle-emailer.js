@@ -134,6 +134,9 @@ class Emailer {
 		let transportDef = this.transportDef
 		let self = this
 		let tri = webhandle.tripartite
+		let reqTri = tri.createBlank()
+		reqTri.loaders = webhandle.templateLoaders
+		reqTri.dataFunctions = Object.assign({}, tri.dataFunctions)
 		return new Promise((resolve, reject) => {
 			let dat = (options.cleanse || this.cleanse)(message.data || {}, {})
 			if (options.processFields) {
@@ -158,11 +161,11 @@ class Emailer {
 			}
 
 			if (options.addTemplates) {
-				options.addTemplates(tri)
+				options.addTemplates(reqTri)
 			}
 
 			if (message.emailTemplate) {
-				tri.loadTemplate(message.emailTemplate, (template) => {
+				reqTri.loadTemplate(message.emailTemplate, (template) => {
 					mailOptions.html = ''
 
 					let emailRenderStream = new stream.Writable();
@@ -171,7 +174,7 @@ class Emailer {
 						done()
 					};
 					template(dat, emailRenderStream, function () {
-						sendContents()
+						sendWithContent()
 					})
 				})
 			}
