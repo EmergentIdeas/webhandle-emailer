@@ -94,14 +94,14 @@ class Emailer {
 		this.transport = nodemailer.createTransport(this.transportDef)
 	}
 
-	findFirstNotNullValue(candidates, fArgs) {
+	async findFirstNotNullValue(candidates, fArgs) {
 		for (let candidate of candidates) {
 			if (candidate) {
 				if (typeof candidate === 'string') {
 					return candidate
 				}
 				if (typeof candidate === 'function') {
-					return candidate(...fArgs)
+					return await candidate(...fArgs)
 				}
 			}
 		}
@@ -137,7 +137,7 @@ class Emailer {
 		let reqTri = tri.createBlank()
 		reqTri.loaders = webhandle.templateLoaders
 		reqTri.dataFunctions = Object.assign({}, tri.dataFunctions)
-		return new Promise((resolve, reject) => {
+		return new Promise(async (resolve, reject) => {
 			let dat = (options.cleanse || this.cleanse)(message.data || {}, {})
 			if (options.processFields) {
 				let ret = options.processFields(dat)
@@ -147,13 +147,13 @@ class Emailer {
 			}
 
 			let mailOptions = {
-				subject: this.findFirstNotNullValue([message.subject, 'Contact from the website'], [message, options])
-				, from: this.findFirstNotNullValue([message.from, transportDef.auth.user], [message, options])
-				, to: this.findFirstNotNullValue([message.to, this.transportOptions.destDefault], [message, options])
-				, replyTo: this.findFirstNotNullValue([message.replyTo], [message, options])
+				subject: await this.findFirstNotNullValue([message.subject, 'Contact from the website'], [message, options])
+				, from: await this.findFirstNotNullValue([message.from, transportDef.auth.user], [message, options])
+				, to: await this.findFirstNotNullValue([message.to, this.transportOptions.destDefault], [message, options])
+				, replyTo: await this.findFirstNotNullValue([message.replyTo], [message, options])
 			}
 			if (message.attachments) {
-				mailOptions.attachments = this.findFirstNotNullValue([message.attachments], [message, options])
+				mailOptions.attachments = await this.findFirstNotNullValue([message.attachments], [message, options])
 			}
 
 			if (options.preRenderProcessor) {
@@ -278,47 +278,21 @@ class Emailer {
 				}
 			}
 
-			function runEmailSend() {
+			async function runEmailSend() {
 
 				if (options.addTemplates) {
 					options.addTemplates(res.tri)
 				}
-				res.tri.loadTemplate(options.emailTemplate || 'contact-email', (template) => {
+				res.tri.loadTemplate(options.emailTemplate || 'contact-email', async (template) => {
 					try {
 						let mailOptions = {
 							from: transportDef.auth.user
 						}
-
-						if (!options.subject) {
-							mailOptions.subject = 'Contact from the website'
-						}
-						else if (typeof options.subject == 'function') {
-							mailOptions.subject = options.subject(req, res)
-						}
-						else {
-							mailOptions.subject = options.subject
-						}
-
-						if (!options.from) {
-
-						}
-						if (typeof options.from == 'function') {
-							mailOptions.from = options.from(req, res)
-						}
-						else {
-							mailOptions.from = options.from
-						}
-
-
-						if (typeof options.to == 'function') {
-							mailOptions.to = options.to(req, res)
-						} else {
-							mailOptions.to = options.to
-						}
-
-						if (dat.email || options.replyTo) {
-							mailOptions.replyTo = options.replyTo || dat.email
-						}
+						
+						mailOptions.subject = await self.findFirstNotNullValue([options.subject, 'Contact from the website'], [req, res, mailOptions, dat, options])
+						mailOptions.from = await self.findFirstNotNullValue([options.from, transportDef.auth.user], [req, res, mailOptions, dat, options])
+						mailOptions.to = await self.findFirstNotNullValue([options.to, transportDef.destDefault], [req, res, mailOptions, dat, options])
+						mailOptions.replyTo = await self.findFirstNotNullValue([options.replyTo, dat.email], [req, res, mailOptions, dat, options])
 
 						if (options.attachments && typeof options.attachments == 'function') {
 							mailOptions.attachments = options.attachments(req, res)
