@@ -1,6 +1,6 @@
 {
   "name": "webhandle-emailer",
-  "version": "1.0.16",
+  "version": "1.0.17",
   "description": "Creates functions to email the results of form submission",
   "main": "webhandle-emailer.js",
   "scripts": {
@@ -26,7 +26,7 @@
   "dependencies": {
     "filter-log": "0.0.4",
     "moment": "^2.20.1",
-    "nodemailer": "^4.4.2",
+    "nodemailer": "^7.0.5",
     "striptags": "^3.1.1"
   }
 }
